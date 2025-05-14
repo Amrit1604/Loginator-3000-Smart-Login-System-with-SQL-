@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        
+        .login-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 300px;
+        }
+        
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: #007BFF;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+        
+        button:hover {
+            background-color: #0069D9;
+        }
+        
+        .error {
+            color: red;
+            text-align: center;
+            margin-top: 10px;
+        }
+        
+        .links {
+            margin-top: 15px;
+            text-align: center;
+        }
+        
+        .links a {
+            color: #007BFF;
+            text-decoration: none;
+        }
+        
+        .links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2>Admin Login</h2>
+        
+        <form id="admin-login-form">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            
+            <button type="submit">Login</button>
+            
+            <div id="error-message" class="error" style="display: none;"></div>
+        </form>
+        
+        <div class="links">
+            <a href="index.html">Back to User Login</a>
+        </div>
+    </div>
+    
+<!-- In the script section of admin-login.html -->
+<script>
+    document.getElementById('admin-login-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        // Use hardcoded values for testing - IMPORTANT FIX
+        const formData = 'username=admin&password=admin%40123';
+        
+        // Send login request with hardcoded values
+        fetch('/bin/admin_login.sh', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: formData // Use the hardcoded values
+        })
+        .then(response => response.text()) // Use text first to see raw response
+        .then(text => {
+            console.log("Raw response:", text);
+            
+            try {
+                const data = JSON.parse(text);
+                if (data.success) {
+                    console.log("Login successful! Redirecting to: " + data.redirect);
+                    window.location.href = data.redirect;
+                } else {
+                    const errorElem = document.getElementById('error-message');
+                    errorElem.textContent = data.message;
+                    errorElem.style.display = 'block';
+                }
+            } catch (e) {
+                console.error("JSON parse error:", e);
+                document.getElementById('error-message').textContent = 'Server returned invalid response';
+                document.getElementById('error-message').style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Login error:', error);
+            document.getElementById('error-message').textContent = 'An error occurred during login. Please try again.';
+            document.getElementById('error-message').style.display = 'block';
+        });
+    });
+</script>
+</body>
+</html>

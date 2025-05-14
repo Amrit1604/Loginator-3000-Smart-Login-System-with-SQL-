@@ -1,0 +1,2288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loginator-3000 Terminal Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Import fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=Ubuntu:wght@300;400;500;700&display=swap');
+
+        :root {
+            /* Terminal-inspired color palette */
+            --primary: #2ECC71;      /* Terminal green */
+            --primary-dark: #27AE60;
+            --secondary: #3498DB;    /* Info blue */
+            --accent: #E74C3C;       /* Error/warning red */
+            --dark: #2C3E50;         /* Dark background */
+            --darker: #1E2B37;       /* Very dark background */
+            --darkest: #141E26;      /* Darkest background for contrast */
+            --light: #ECF0F1;        /* Light text */
+            --medium: #BDC3C7;       /* Borders, muted elements */
+            --success: #2ECC71;
+            --warning: #F39C12;
+            --danger: #E74C3C;
+            --info: #3498DB;
+            --purple: #9B59B6;       /* For highlighting */
+            --shadow: rgba(0, 0, 0, 0.2);
+            
+            /* Terminal effects */
+            --glow: 0 0 10px rgba(46, 204, 113, 0.5);
+            --terminal-radius: 6px;
+            --panel-radius: 8px;
+            
+            /* Transitions */
+            --transition-speed: 0.3s;
+        }
+
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Fira Code', monospace;
+            background-color: var(--darker);
+            color: var(--light);
+            line-height: 1.6;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* CRT effect overlay */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    rgba(0, 0, 0, 0.15),
+                    rgba(0, 0, 0, 0.15) 1px,
+                    transparent 1px,
+                    transparent 2px
+                );
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0.3;
+        }
+
+        body::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse at center, rgba(30, 43, 55, 0) 0%, rgba(30, 43, 55, 0.8) 100%),
+                radial-gradient(circle at 20% 25%, rgba(46, 204, 113, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 75%, rgba(52, 152, 219, 0.05) 0%, transparent 40%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-areas: 
+                "header header"
+                "sidebar main";
+            grid-template-columns: 240px 1fr;
+            grid-template-rows: auto 1fr;
+            height: 100vh;
+        }
+
+        /* Header styles */
+        .header {
+            grid-area: header;
+            background-color: var(--dark);
+            padding: 0 20px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            z-index: 100;
+        }
+
+        .terminal-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .terminal-button {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .terminal-button.close { background-color: #FF5F56; }
+        .terminal-button.minimize { background-color: #FFBD2E; }
+        .terminal-button.maximize { background-color: #27C93F; }
+
+        .sys-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-right: 20px;
+            color: var(--medium);
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .sys-info span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .sys-info i {
+            color: var(--primary);
+        }
+
+        /* Blinking dot indicator */
+        .blink-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            margin-left: 6px;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        /* Sidebar styles */
+        .sidebar {
+            grid-area: sidebar;
+            background-color: var(--darkest);
+            padding: 20px 0;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            overflow-y: auto;
+            z-index: 99;
+        }
+
+        .user-profile {
+            padding: 0 20px 20px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            text-align: center;
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: var(--darker);
+            margin-bottom: 10px;
+        }
+
+        .user-info h3 {
+            color: var(--light);
+            font-weight: 500;
+            font-size: 16px;
+        }
+
+        .user-info p {
+            color: var(--primary);
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .user-status {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 4px 10px;
+            font-size: 11px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-circle {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--success);
+        }
+
+        .nav-menu {
+            list-style-type: none;
+        }
+
+        .nav-menu li {
+            margin-bottom: 2px;
+        }
+
+        .nav-menu a {
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            color: var(--medium);
+            text-decoration: none;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .nav-menu a:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--light);
+        }
+
+        .nav-menu a.active {
+            background-color: rgba(46, 204, 113, 0.1);
+            color: var(--primary);
+            border-left: 3px solid var(--primary);
+        }
+
+        .nav-menu a i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Main content area */
+        .main-content {
+            grid-area: main;
+            overflow-y: auto;
+            padding: 20px;
+            position: relative;
+            z-index: 98;
+        }
+
+        .greeting-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .greeting {
+            font-size: 14px;
+        }
+
+        .greeting span {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .search-container {
+            width: 300px;
+        }
+
+        .search-container form {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-container input {
+            width: 100%;
+            padding: 8px 12px;
+            padding-left: 35px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: var(--terminal-radius);
+            color: var(--light);
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+            transition: all var(--transition-speed);
+        }
+
+        .search-container i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--medium);
+            pointer-events: none;
+        }
+
+        .search-container input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 5px rgba(46, 204, 113, 0.3);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background-color: var(--dark);
+            border-radius: var(--panel-radius);
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .panel-header {
+            background-color: rgba(0, 0, 0, 0.15);
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            color: var(--primary);
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-title i {
+            font-size: 16px;
+        }
+
+        .panel-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .panel-action {
+            background: none;
+            border: none;
+            color: var(--medium);
+            cursor: pointer;
+            font-size: 14px;
+            transition: color 0.3s;
+            padding: 0 5px;
+        }
+
+        .panel-action:hover {
+            color: var(--primary);
+        }
+
+        .panel-content {
+            padding: 15px;
+        }
+
+        /* System stats panel */
+        .stats-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-gap: 15px;
+        }
+
+        .stat-item {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: var(--terminal-radius);
+            padding: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-title {
+            font-size: 12px;
+            color: var(--medium);
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--light);
+            margin-bottom: 5px;
+        }
+
+        .progress-bar {
+            height: 5px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-value {
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+
+        .progress-value.cpu {
+            background-color: var(--info);
+        }
+
+        .progress-value.memory {
+            background-color: var(--warning);
+        }
+
+        .progress-value.disk {
+            background-color: var(--primary);
+        }
+
+        .progress-value.network {
+            background-color: var(--purple);
+        }
+
+        /* Terminal panel */
+        .terminal-panel {
+            grid-column: span 2;
+            grid-row: span 2;
+        }
+
+        .terminal-content {
+            background-color: rgba(0, 0, 0, 0.3);
+            font-family: 'Fira Code', monospace;
+            color: var(--light);
+            font-size: 13px;
+            line-height: 1.5;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+        }
+
+        .terminal-line {
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+
+        .terminal-prompt {
+            color: var(--primary);
+            margin-right: 5px;
+        }
+
+        .terminal-command {
+            color: var(--light);
+        }
+
+        .terminal-output {
+            color: var(--medium);
+            padding-left: 18px;
+        }
+
+        .terminal-error {
+            color: var(--danger);
+            padding-left: 18px;
+        }
+
+        .terminal-success {
+            color: var(--success);
+            padding-left: 18px;
+        }
+
+        .terminal-input-line {
+            display: flex;
+            margin-top: 10px;
+        }
+
+        .terminal-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--light);
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+            caret-color: var(--primary);
+        }
+
+        .terminal-input:focus {
+            outline: none;
+        }
+
+        /* Container panel */
+        .container-list {
+            list-style-type: none;
+        }
+
+        .container-item {
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: var(--terminal-radius);
+            border-left: 4px solid var(--primary);
+            position: relative;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .container-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .container-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .container-name {
+            color: var(--primary);
+            font-weight: 500;
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .container-description {
+            color: var(--medium);
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .container-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+
+        .container-stat {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .container-stat i {
+            color: var(--info);
+        }
+
+        .container-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            padding: 7px 12px;
+            border-radius: var(--terminal-radius);
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--darker);
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+        }
+
+        .btn-info {
+            background-color: var(--info);
+        }
+
+        .btn-warning {
+            background-color: var(--warning);
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+        }
+
+        .btn:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Activity Log */
+        .activity-log {
+            max-height: 380px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            border-left: 2px solid var(--info);
+            padding: 8px 12px;
+            background-color: rgba(0, 0, 0, 0.15);
+            margin-bottom: 8px;
+            border-radius: 0 var(--terminal-radius) var(--terminal-radius) 0;
+            font-size: 12px;
+        }
+
+        .log-entry:nth-child(odd) {
+            background-color: rgba(0, 0, 0, 0.25);
+        }
+
+        .log-time {
+            color: var(--info);
+            margin-right: 8px;
+        }
+
+        .log-action {
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .log-details {
+            color: var(--medium);
+            margin-left: 5px;
+        }
+
+        /* Network Tools */
+        .network-tools {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .tool-btn {
+            background-color: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: var(--terminal-radius);
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tool-btn:hover {
+            background-color: rgba(46, 204, 113, 0.1);
+            border-color: var(--primary);
+        }
+
+        .tool-btn i {
+            color: var(--primary);
+            font-size: 18px;
+        }
+
+        .tool-btn span {
+            color: var(--light);
+            font-size: 13px;
+        }
+
+        /* File Explorer */
+        .file-explorer {
+            height: 200px;
+            overflow-y: auto;
+        }
+
+        .file-list {
+            list-style-type: none;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 6px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+        }
+
+        .file-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .file-icon {
+            margin-right: 8px;
+            color: var(--info);
+        }
+
+        .file-icon.folder {
+            color: var(--warning);
+        }
+
+        .file-name {
+            flex: 1;
+            font-size: 13px;
+        }
+
+        .file-meta {
+            color: var(--medium);
+            font-size: 11px;
+            text-align: right;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(46, 204, 113, 0.4);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(46, 204, 113, 0.6);
+        }
+
+        /* Notifications */
+        .notification-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            background-color: var(--danger);
+            color: var(--light);
+            font-size: 10px;
+            border-radius: 50%;
+            position: absolute;
+            top: 8px;
+            right: 18px;
+        }
+
+        /* Responsive */
+        @media screen and (max-width: 992px) {
+            .dashboard {
+                grid-template-areas: 
+                    "header header"
+                    "main main";
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                display: none;
+                position: absolute;
+                top: 48px;
+                left: 0;
+                bottom: 0;
+                width: 240px;
+                z-index: 999;
+            }
+            
+            .sidebar.active {
+                display: block;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .terminal-panel {
+                grid-column: span 1;
+            }
+        }
+
+        /* Loader animation */
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(46, 204, 113, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s infinite linear;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Network animation */
+        .network-animation {
+            height: 30px;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            margin: 10px 0;
+        }
+
+        .network-bar {
+            width: 3px;
+            height: 100%;
+            background-color: var(--primary);
+            animation: pulse 1.5s infinite;
+            opacity: 0.3;
+        }
+
+        .network-bar:nth-child(2) { animation-delay: 0.2s; }
+        .network-bar:nth-child(3) { animation-delay: 0.4s; }
+        .network-bar:nth-child(4) { animation-delay: 0.6s; }
+        .network-bar:nth-child(5) { animation-delay: 0.8s; }
+        .network-bar:nth-child(6) { animation-delay: 1s; }
+        .network-bar:nth-child(7) { animation-delay: 1.2s; }
+        .network-bar:nth-child(8) { animation-delay: 1.4s; }
+
+        @keyframes pulse {
+            0%, 100% { height: 30%; }
+            50% { height: 100%; }
+        }
+
+        /* Typewriter animation */
+        .typewriter {
+            overflow: hidden;
+            white-space: nowrap;
+            border-right: 2px solid var(--primary);
+            animation: typing 3.5s steps(40, end), blink-caret 0.75s step-end infinite;
+        }
+
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: var(--primary) }
+        }
+
+/* Easter egg animation */
+.easter-egg {
+  animation: rainbow-bg 5s infinite;
+}
+
+@keyframes rainbow-bg {
+  0% { background-color: #ff0000; }
+  17% { background-color: #ff8000; }
+  33% { background-color: #ffff00; }
+  50% { background-color: #00ff00; }
+  67% { background-color: #0000ff; }
+  83% { background-color: #8000ff; }
+  100% { background-color: #ff0000; }
+}
+
+/* Confetti animation */
+.confetti {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  top: -10px;
+  z-index: 9999;
+  animation: fall linear forwards;
+}
+
+@keyframes fall {
+  to { transform: translateY(100vh) rotate(720deg); }
+}
+
+/* Achievement notification */
+.achievement-unlocked {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 15px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  animation: slide-in 0.5s ease forwards;
+  z-index: 10000;
+}
+
+.achievement-icon {
+  font-size: 40px;
+}
+
+.achievement-text h3 {
+  margin: 0 0 5px 0;
+  color: gold;
+}
+
+.achievement-text p {
+  margin: 0;
+}
+
+@keyframes slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.slide-out {
+  animation: slide-out 0.5s ease forwards;
+}
+
+@keyframes slide-out {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+
+/* Assignment styles */
+.assignments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.assignment-card {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: var(--panel-radius);
+    overflow: hidden;
+    border-left: 4px solid var(--info);
+    transition: transform 0.3s ease;
+}
+
+.assignment-card:hover {
+    transform: translateY(-2px);
+}
+
+.assignment-header {
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.assignment-date {
+    font-size: 12px;
+    color: var(--medium);
+}
+
+.assignment-body {
+    padding: 15px;
+}
+
+.assignment-title {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 16px;
+    color: var(--primary);
+}
+
+.assignment-description {
+    font-size: 14px;
+    color: var(--light);
+    white-space: pre-wrap;
+}
+
+.assignment-footer {
+    padding: 10px 15px;
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.status-badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-completed {
+    background-color: rgba(46, 204, 113, 0.15);
+    color: var(--success);
+    border: 1px solid rgba(46, 204, 113, 0.3);
+}
+
+.status-pending {
+    background-color: rgba(243, 156, 18, 0.15);
+    color: var(--warning);
+    border: 1px solid rgba(243, 156, 18, 0.3);
+}
+
+
+    </style>
+</head>
+<body>
+
+    <div class="dashboard">
+        <!-- Header Bar -->
+        <header class="header">
+            <div class="terminal-buttons">
+                <div class="terminal-button close"></div>
+                <div class="terminal-button minimize"></div>
+                <div class="terminal-button maximize"></div>
+            </div>
+            
+            <div class="sys-info">
+                <span><i class="fas fa-microchip"></i> CPU: <span id="cpu-usage">23%</span></span>
+                <span><i class="fas fa-memory"></i> RAM: <span id="ram-usage">1.2GB/8GB</span></span>
+                <span><i class="fas fa-network-wired"></i> NET: <span id="net-status">ACTIVE<span class="blink-dot"></span></span></span>
+            </div>
+        </header>
+
+        <!-- Side Navigation -->
+        <aside class="sidebar">
+            <div class="user-profile">
+                <div class="avatar" id="user-avatar">U</div>
+                <div class="user-info">
+                    <h3 id="user-display-name">User</h3>
+                    <p id="user-role">Standard User</p>
+                    <div class="user-status">
+                        <span class="status-circle"></span>
+                        Active Session
+                    </div>
+                </div>
+            </div>
+            
+<ul class="nav-menu">
+    <li><a href="#" class="active" data-tab="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+    <li><a href="#" data-tab="containers"><i class="fas fa-cube"></i> Containers</a></li>
+    <li><a href="#" data-tab="assignments"><i class="fas fa-tasks"></i> Assignments</a></li>
+    <li><a href="#" data-tab="terminal"><i class="fas fa-terminal"></i> Terminal</a></li>
+    <li><a href="#" data-tab="file-manager"><i class="fas fa-folder"></i> File Manager</a></li>
+    <li><a href="#" data-tab="network"><i class="fas fa-network-wired"></i> Network Tools</a></li>
+    <li><a href="#" data-tab="activity"><i class="fas fa-chart-line"></i> Activity Log</a></li>
+    <li><a href="#" data-tab="settings"><i class="fas fa-cog"></i> Settings</a></li>
+    <li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+</ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="greeting-bar">
+                <div class="greeting">
+                    Welcome back, <span id="username-display">User</span> | <span id="current-time">00:00:00</span> | <span id="current-date">Loading date...</span>
+                </div>
+                <div class="search-container">
+                    <form id="command-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Search or type a command..." id="command-input">
+                    </form>
+                </div>
+            </div>
+
+            <!-- Dashboard Content -->
+            <div class="dashboard-grid">
+                <!-- System Stats -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i class="fas fa-chart-bar"></i> System Stats
+                        </div>
+                        <div class="panel-actions">
+                            <button class="panel-action" id="refresh-stats"><i class="fas fa-sync-alt"></i></button>
+                        </div>
+                    </div>
+                    <div class="panel-content">
+                        <div class="stats-container">
+                            <div class="stat-item">
+                                <div class="stat-title">CPU Usage</div>
+                                <div class="stat-value" id="stat-cpu">23%</div>
+                                <div class="progress-bar">
+                                    <div class="progress-value cpu" style="width: 23%"></div>
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-title">Memory Usage</div>
+                                <div class="stat-value" id="stat-memory">16%</div>
+                                <div class="progress-bar">
+                                    <div class="progress-value memory" style="width: 16%"></div>
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-title">Disk Usage</div>
+                                <div class="stat-value" id="stat-disk">42%</div>
+                                <div class="progress-bar">
+                                    <div class="progress-value disk" style="width: 42%"></div>
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-title">Network</div>
+                                <div class="stat-value" id="stat-network">3.2MB/s</div>
+                                <div class="progress-bar">
+                                    <div class="progress-value network" style="width: 32%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i class="fas fa-bolt"></i> Quick Actions
+                        </div>
+                        <div class="panel-actions">
+                            <button class="panel-action" id="refresh-actions"><i class="fas fa-sync-alt"></i></button>
+                        </div>
+                    </div>
+                    <div class="panel-content">
+                        <div class="network-tools">
+                            <div class="tool-btn" id="ping-tool">
+                                <i class="fas fa-satellite-dish"></i>
+                                <span>Ping Test</span>
+                            </div>
+                            <div class="tool-btn" id="traceroute-tool">
+                                <i class="fas fa-route"></i>
+                                <span>Traceroute</span>
+                            </div>
+                            <div class="tool-btn" id="scan-tool">
+                                <i class="fas fa-shield-alt"></i>
+                                <span>Security Scan</span>
+                            </div>
+                            <div class="tool-btn" id="backup-tool">
+                                <i class="fas fa-database"></i>
+                                <span>Backup Data</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Terminal -->
+                <div class="panel terminal-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i class="fas fa-terminal"></i> Terminal
+                        </div>
+                        <div class="panel-actions">
+                            <button class="panel-action" id="clear-terminal"><i class="fas fa-eraser"></i></button>
+                            <button class="panel-action" id="terminal-help"><i class="fas fa-question"></i></button>
+                        </div>
+                    </div>
+                    <div class="panel-content" style="padding: 0;">
+                        <div class="terminal-content" id="terminal-output">
+                            <div class="terminal-line">
+                                <span class="terminal-output">Welcome to  terminal v1.0</span>
+                            </div>
+                            <div class="terminal-line">
+                                <span class="terminal-output">Type 'help' to see available commands</span>
+                            </div>
+                            <div class="terminal-line">
+                                <span class="terminal-prompt">user@Loginator-3000:~$</span>
+                                <span class="terminal-command">whoami</span>
+                            </div>
+                            <div class="terminal-line">
+                                <span class="terminal-output" id="terminal-whoami">user</span>
+                            </div>
+                            <div class="terminal-line">
+                                <span class="terminal-prompt">user@Loginator-3000:~$</span>
+                                <span class="terminal-command">date</span>
+                            </div>
+                            <div class="terminal-line">
+                                <span class="terminal-output" id="terminal-date">Loading date information...</span>
+                            </div>
+                        </div>
+                        <div class="terminal-input-line">
+                            <span class="terminal-prompt" id="prompt-username">user@Loginator-3000:~$</span>
+                            <input type="text" class="terminal-input" id="terminal-command-input" autofocus>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Containers -->
+
+                <!-- Assignments Panel -->
+<div class="panel" id="assignments-panel" style="display:none;">
+    <div class="panel-header">
+        <div class="panel-title">
+            <i class="fas fa-tasks"></i> My Assignments
+        </div>
+        <div class="panel-actions">
+            <button class="panel-action" id="refresh-assignments"><i class="fas fa-sync-alt"></i></button>
+        </div>
+    </div>
+    <div class="panel-content">
+        <div id="assignmentsList">
+            <p>Loading assignments...</p>
+        </div>
+    </div>
+</div>
+
+                
+
+                <!-- Activity Log -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i class="fas fa-history"></i> Activity Log
+                        </div>
+                        <div class="panel-actions">
+                            <button class="panel-action" id="refresh-logs"><i class="fas fa-sync-alt"></i></button>
+                            <button class="panel-action" id="clear-logs"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="panel-content">
+                        <div id="activity-log" class="activity-log">
+                            <div class="log-entry">
+                                <span class="log-time">[Loading]</span>
+                                <span class="log-action">Initializing activity log</span>
+                                <span class="log-details">Please wait...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Explorer -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i class="fas fa-folder-open"></i> Quick File Access
+                        </div>
+                        <div class="panel-actions">
+                            <button class="panel-action" id="refresh-files"><i class="fas fa-sync-alt"></i></button>
+                        </div>
+                    </div>
+                    <div class="panel-content">
+                        <div class="file-explorer">
+                            <ul class="file-list" id="file-list">
+                                <li class="file-item">
+                                    <i class="fas fa-folder file-icon folder"></i>
+                                    <span class="file-name">Loading files...</span>
+                                    <span class="file-meta"></span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+<!-- Assignment submission modal -->
+<div id="assignment-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:#2C3E50; color:#ECF0F1; padding:20px; border-radius:8px; z-index:1000; width:90%; max-width:500px; box-shadow:0 5px 15px rgba(0,0,0,0.3);">
+    <h3>Submit Work</h3>
+    <div id="modal-assignment-desc" style="background:rgba(0,0,0,0.2); padding:10px; margin:10px 0; border-radius:4px;"></div>
+    <form id="assignment-submit-form">
+        <input type="hidden" id="modal-assignment-id" name="assignment_id">
+        <label for="work-code">Your solution:</label><br>
+        <textarea id="work-code" name="work_content" rows="10" style="width:100%; background:rgba(0,0,0,0.2); color:#ECF0F1; border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:8px;"></textarea><br><br>
+        <label>Or upload a file:</label><br>
+        <input type="file" name="work_file" style="margin:10px 0;"><br><br>
+        <button type="submit" class="btn btn-primary">Submit Work</button>
+        <button type="button" class="btn btn-danger" onclick="closeAssignmentModal()">Cancel</button>
+    </form>
+    <div id="assignment-feedback" style="margin-top:10px;"></div>
+</div>
+
+
+    <script>
+
+
+        // Utility functions
+        function updateDateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString();
+            document.getElementById('current-date').textContent = now.toLocaleDateString();
+            document.getElementById('terminal-date').textContent = now.toString();
+        }
+
+        function simulateSystemStats() {
+            // CPU random between 10-80%
+            const cpuUsage = Math.floor(Math.random() * 70) + 10;
+            document.getElementById('cpu-usage').textContent = cpuUsage + '%';
+            document.getElementById('stat-cpu').textContent = cpuUsage + '%';
+            document.querySelector('.progress-value.cpu').style.width = cpuUsage + '%';
+            
+            // RAM usage
+            const ramPercentage = Math.floor(Math.random() * 60) + 5;
+            const ramTotal = 8; // GB
+            const ramUsed = (ramPercentage * ramTotal / 100).toFixed(1);
+            document.getElementById('ram-usage').textContent = ramUsed + 'GB/' + ramTotal + 'GB';
+            document.getElementById('stat-memory').textContent = ramPercentage + '%';
+            document.querySelector('.progress-value.memory').style.width = ramPercentage + '%';
+            
+            // Disk usage
+            const diskUsage = Math.floor(Math.random() * 60) + 30;
+            document.getElementById('stat-disk').textContent = diskUsage + '%';
+            document.querySelector('.progress-value.disk').style.width = diskUsage + '%';
+            
+            // Network
+            const networkSpeed = (Math.random() * 10).toFixed(1);
+            document.getElementById('stat-network').textContent = networkSpeed + 'MB/s';
+            document.querySelector('.progress-value.network').style.width = (networkSpeed * 10) + '%';
+        }
+
+        // Terminal functionality
+        const terminalOutput = document.getElementById('terminal-output');
+        const terminalInput = document.getElementById('terminal-command-input');
+
+        function addTerminalLine(type, content) {
+            const line = document.createElement('div');
+            line.className = 'terminal-line';
+            
+            if (type === 'command') {
+                line.innerHTML = `<span class="terminal-prompt">${document.getElementById('prompt-username').textContent}</span><span class="terminal-command">${content}</span>`;
+            } else {
+                line.innerHTML = `<span class="terminal-${type}">${content}</span>`;
+            }
+            
+            terminalOutput.appendChild(line);
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+
+        function executeCommand(command) {
+            addTerminalLine('command', command);
+            
+            // Basic command handling
+            const cmd = command.trim().toLowerCase();
+            const args = cmd.split(' ');
+            
+            switch(args[0]) {
+                case 'help':
+                    addTerminalLine('output', 'Available commands:');
+                    addTerminalLine('output', '  help - Show this help message');
+                    addTerminalLine('output', '  clear - Clear terminal output');
+                    addTerminalLine('output', '  date - Show current date and time');
+                    addTerminalLine('output', '  whoami - Show current user');
+                    addTerminalLine('output', '  ls - List files');
+                    addTerminalLine('output', '  containers - List available containers');
+                    addTerminalLine('output', '  neofetch - Display system information');
+                    addTerminalLine('output', '  ping [host] - Ping specified host');
+                    addTerminalLine('output', '  traceroute [host] - Trace route to host');
+                    addTerminalLine('output', '  logout - Log out of the system');
+                    break;
+                    
+                case 'clear':
+                    terminalOutput.innerHTML = '';
+                    break;
+                    
+                case 'date':
+                    addTerminalLine('output', new Date().toString());
+                    break;
+                    
+                case 'whoami':
+                    addTerminalLine('output', document.getElementById('username-display').textContent);
+                    break;
+                    
+                case 'ls':
+                    addTerminalLine('output', 'Documents/');
+                    addTerminalLine('output', 'Downloads/');
+                    addTerminalLine('output', 'containers.yml');
+                    addTerminalLine('output', 'config.json');
+                    addTerminalLine('output', 'README.md');
+                    break;
+                    
+                case 'containers':
+                    addTerminalLine('output', 'Listing containers...');
+                    loadContainers();
+                    break;
+                    
+                case 'neofetch':
+                    addTerminalLine('output', `OS: Loginator-3000 ${Math.floor(Math.random() * 10) + 1}.${Math.floor(Math.random() * 10)}`);
+                    addTerminalLine('output', `Host: WebContainer v${Math.floor(Math.random() * 5) + 1}`);
+                    addTerminalLine('output', 'Kernel: ' + (new Date()).toLocaleDateString());
+                    addTerminalLine('output', 'Uptime: ' + Math.floor(Math.random() * 24) + ' hours, ' + Math.floor(Math.random() * 60) + ' mins');
+                    addTerminalLine('output', 'Shell: bash 5.1.0');
+                    addTerminalLine('output', 'CPU: WebCore @ ' + (Math.random() * 3 + 2).toFixed(1) + 'GHz');
+                    addTerminalLine('output', 'Memory: ' + Math.floor(Math.random() * 4000 + 1000) + 'MiB / 8192MiB');
+                    break;
+                    
+                case 'ping':
+                    if (!args[1]) {
+                        addTerminalLine('error', 'Usage: ping [host]');
+                        break;
+                    }
+                    addTerminalLine('output', `PING ${args[1]} (127.0.0.1) 56(84) bytes of data.`);
+                    
+                    let pingCount = 0;
+                    const pingInterval = setInterval(() => {
+                        const pingTime = Math.floor(Math.random() * 50) + 20;
+                        addTerminalLine('output', `64 bytes from ${args[1]}: icmp_seq=${pingCount} ttl=64 time=${pingTime} ms`);
+                        pingCount++;
+                        
+                        if (pingCount >= 4) {
+                            clearInterval(pingInterval);
+                            addTerminalLine('output', `--- ${args[1]} ping statistics ---`);
+                            addTerminalLine('output', `4 packets transmitted, 4 received, 0% packet loss, time ${Math.floor(Math.random() * 10) + 3}ms`);
+                            addTerminalLine('output', `rtt min/avg/max/mdev = ${Math.floor(Math.random() * 10) + 20}/${Math.floor(Math.random() * 10) + 25}/${Math.floor(Math.random() * 10) + 30}/${Math.floor(Math.random() * 5) + 1} ms`);
+                        }
+                    }, 500);
+                    break;
+                    
+                case 'traceroute':
+                    if (!args[1]) {
+                        addTerminalLine('error', 'Usage: traceroute [host]');
+                        break;
+                    }
+                    addTerminalLine('output', `traceroute to ${args[1]} (127.0.0.1), 30 hops max, 60 byte packets`);
+                    
+                    let hopCount = 1;
+                    const traceInterval = setInterval(() => {
+                        const hopTime1 = Math.floor(Math.random() * 50) + 10;
+                        const hopTime2 = Math.floor(Math.random() * 50) + 10;
+                        const hopTime3 = Math.floor(Math.random() * 50) + 10;
+                        
+                        if (hopCount <= 4) {
+                            addTerminalLine('output', ` ${hopCount}  router-${hopCount}.local (192.168.${hopCount}.1)  ${hopTime1}.${Math.floor(Math.random() * 100)} ms ${hopTime2}.${Math.floor(Math.random() * 100)} ms ${hopTime3}.${Math.floor(Math.random() * 100)} ms`);
+                        } else {
+                            addTerminalLine('output', ` ${hopCount}  ${args[1]} (127.0.0.1)  ${hopTime1}.${Math.floor(Math.random() * 100)} ms ${hopTime2}.${Math.floor(Math.random() * 100)} ms ${hopTime3}.${Math.floor(Math.random() * 100)} ms`);
+                            clearInterval(traceInterval);
+                        }
+                        
+                        hopCount++;
+                    }, 300);
+                    break;
+                    
+                case 'logout':
+                    addTerminalLine('output', 'Logging out...');
+                    setTimeout(() => {
+                        logout();
+                    }, 1000);
+                    break;
+                    
+                default:
+                    if (cmd) {
+                        addTerminalLine('error', `Command not found: ${cmd}`);
+                        addTerminalLine('output', 'Type "help" for available commands');
+                    }
+            }
+        }
+
+        terminalInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const command = this.value;
+                executeCommand(command);
+                this.value = '';
+            }
+        });
+
+        document.getElementById('command-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const command = this.value;
+                if (command.trim()) {
+                    executeCommand(command);
+                    this.value = '';
+                }
+            }
+        });
+
+        // Container functions
+        function loadContainers() {
+            fetch('/bin/get_user_containers.sh')
+                .then(response => response.text())
+                .then(text => {
+                    const containerList = document.getElementById('container-list');
+                    containerList.innerHTML = ''; // Clear the container list
+                    
+                    try {
+                        const lines = text.trim().split('\n');
+                        
+                        if (lines.length > 0 && lines[0] !== '[]') {
+                            lines.forEach(line => {
+                                try {
+                                    // Try to parse each line as a JSON object
+                                    const container = JSON.parse(line);
+                                    
+                                    // Create container element
+                                    const containerItem = document.createElement('li');
+                                    containerItem.classList.add('container-item');
+                                    
+                                    // Extract just the container name from the path if needed
+                                    const containerName = container.name.split('/').pop();
+                                    
+                                    // Add random stats for demo
+                                    const cpuUsage = Math.floor(Math.random() * 60) + 5;
+                                    const memoryUsage = Math.floor(Math.random() * 500) + 100;
+                                    const diskUsage = Math.floor(Math.random() * 2) + 1;
+                                    
+                                    containerItem.innerHTML = `
+                                        <div class="container-header">
+                                            <h3 class="container-name">${containerName || container.name}</h3>
+                                        </div>
+                                        <div class="container-description">${container.description || 'Linux container with SSH access'}</div>
+                                        <div class="container-stats">
+                                            <div class="container-stat">
+                                                <i class="fas fa-microchip"></i>
+                                                <span>${cpuUsage}% CPU</span>
+                                            </div>
+                                            <div class="container-stat">
+                                                <i class="fas fa-memory"></i>
+                                                <span>${memoryUsage}MB RAM</span>
+                                            </div>
+                                            <div class="container-stat">
+                                                <i class="fas fa-hdd"></i>
+                                                <span>${diskUsage}GB Storage</span>
+                                            </div>
+                                        </div>
+                                        <div class="container-actions">
+                                            <button class="btn btn-primary access-container" data-container="${containerName}">
+                                                <i class="fas fa-terminal"></i> Access
+                                            </button>
+                                            <button class="btn btn-info container-stats-btn" data-container="${containerName}">
+                                                <i class="fas fa-chart-bar"></i> Stats
+                                            </button>
+                                            <button class="btn btn-warning container-restart-btn" data-container="${containerName}">
+                                                <i class="fas fa-sync-alt"></i> Restart
+                                            </button>
+                                            <button class="btn btn-danger container-stop-btn" data-container="${containerName}">
+                                                <i class="fas fa-stop-circle"></i> Stop
+                                            </button>
+                                            
+                                        </div>
+                                        
+                                    `;
+                                    containerList.appendChild(containerItem);
+                                    
+                                    // Add container to terminal output if called from terminal
+                                    if (text) {
+                                        addTerminalLine('output', `${containerName || container.name} - ${container.description || 'Linux container'}`);
+                                    }
+                                    
+                                    // Add event listeners to buttons
+                                    containerItem.querySelector('.access-container').addEventListener('click', function() {
+                                        const container = this.getAttribute('data-container');
+                                        accessContainer(container);
+                                    });
+                                    
+                                    containerItem.querySelector('.container-stats-btn').addEventListener('click', function() {
+                                        const container = this.getAttribute('data-container');
+                                        showContainerStats(container);
+                                    });
+                                    
+                                    containerItem.querySelector('.container-restart-btn').addEventListener('click', function() {
+                                        const container = this.getAttribute('data-container');
+                                        restartContainer(container);
+                                    });
+                                    
+                                    containerItem.querySelector('.container-stop-btn').addEventListener('click', function() {
+                                        const container = this.getAttribute('data-container');
+                                        stopContainer(container);
+                                    });
+                                } catch (e) {
+                                    console.error('Error parsing container data:', line, e);
+                                }
+                            });
+                        } else {
+                            addNoContainersMessage(containerList);
+                        }
+                    } catch (error) {
+                        console.error('Error processing container data:', error);
+                        addNoContainersMessage(containerList);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching container data:', error);
+                    const containerList = document.getElementById('container-list');
+                    containerList.innerHTML = '';
+                    addNoContainersMessage(containerList);
+                });
+        }
+
+        function addNoContainersMessage(containerList) {
+            const noContainersMessage = document.createElement('li');
+            noContainersMessage.classList.add('container-item');
+            noContainersMessage.innerHTML = `
+                <div class="container-header">
+                    <h3 class="container-name">No Containers Available</h3>
+                </div>
+                <div class="container-description">You don't have any containers assigned to your account yet.</div>
+            `;
+            containerList.appendChild(noContainersMessage);
+        }
+
+        function accessContainer(container) {
+            // Simulate container access
+            addLogEntry(`Accessing container ${container}`);
+            addTerminalLine('command', `ssh user@${container}`);
+            addTerminalLine('output', 'Establishing secure connection...');
+            
+            setTimeout(() => {
+                addTerminalLine('success', `Connected to ${container}`);
+                addTerminalLine('output', `Welcome to ${container}! Type 'help' for available commands.`);
+                document.getElementById('prompt-username').textContent = `user@${container}:~$`;
+                document.getElementById('terminal-command-input').focus();
+            }, 1500);
+        }
+
+        function showContainerStats(container) {
+            // Simulate container stats
+            addLogEntry(`Viewing stats for ${container}`);
+            addTerminalLine('command', `stats ${container}`);
+            
+            const cpuUsage = Math.floor(Math.random() * 60) + 5;
+            const memoryUsage = Math.floor(Math.random() * 500) + 100;
+            const diskUsage = Math.floor(Math.random() * 2) + 1;
+            const uptime = Math.floor(Math.random() * 24) + 1;
+            
+            addTerminalLine('output', `Container: ${container}`);
+            addTerminalLine('output', `Status: Running`);
+            addTerminalLine('output', `Uptime: ${uptime} hours`);
+            addTerminalLine('output', `CPU: ${cpuUsage}%`);
+            addTerminalLine('output', `Memory: ${memoryUsage}MB / 1024MB`);
+            addTerminalLine('output', `Disk: ${diskUsage}GB / 5GB`);
+            addTerminalLine('output', `Network RX/TX: ${Math.floor(Math.random() * 100)}MB / ${Math.floor(Math.random() * 50)}MB`);
+        }
+
+        function restartContainer(container) {
+            // Simulate container restart
+            addLogEntry(`Restarting container ${container}`);
+            addTerminalLine('command', `restart ${container}`);
+            addTerminalLine('output', `Restarting container ${container}...`);
+            
+            setTimeout(() => {
+                addTerminalLine('success', `Container ${container} restarted successfully`);
+            }, 2000);
+        }
+
+        function stopContainer(container) {
+            // Simulate container stop
+            addLogEntry(`Stopping container ${container}`);
+            addTerminalLine('command', `stop ${container}`);
+            addTerminalLine('output', `Stopping container ${container}...`);
+            
+            setTimeout(() => {
+                addTerminalLine('success', `Container ${container} stopped successfully`);
+            }, 1500);
+        }
+
+        // Activity log functions
+        function addLogEntry(action, details = '') {
+            const now = new Date();
+            const timeStr = now.toTimeString().split(' ')[0];
+            const activityLog = document.getElementById('activity-log');
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span class="log-time">[${timeStr}]</span>
+                <span class="log-action">${action}</span>
+                ${details ? `<span class="log-details">${details}</span>` : ''}
+            `;
+            
+            activityLog.appendChild(logEntry);
+            activityLog.scrollTop = activityLog.scrollHeight;
+            
+            // Log to server
+            trackUserActivity(action, details);
+        }
+
+        // File explorer functions
+        function loadFiles() {
+            const fileList = document.getElementById('file-list');
+            fileList.innerHTML = '';
+            
+            // Simulate file loading
+            const files = [
+                { name: 'Documents', type: 'folder', modified: '2023-05-10' },
+                { name: 'Downloads', type: 'folder', modified: '2023-05-08' },
+                { name: 'config.json', type: 'file', modified: '2023-05-01', size: '4.2 KB' },
+                { name: 'script.sh', type: 'file', modified: '2023-05-05', size: '2.1 KB' },
+                { name: 'data.csv', type: 'file', modified: '2023-04-28', size: '128 KB' },
+                { name: 'README.md', type: 'file', modified: '2023-04-15', size: '8.7 KB' }
+            ];
+            
+            files.forEach(file => {
+                const fileItem = document.createElement('li');
+                fileItem.className = 'file-item';
+                
+                const icon = file.type === 'folder' ? 'fa-folder' : 'fa-file-alt';
+                const iconClass = file.type === 'folder' ? 'folder' : '';
+                const meta = file.type === 'folder' ? file.modified : `${file.size} • ${file.modified}`;
+                
+                fileItem.innerHTML = `
+                    <i class="fas ${icon} file-icon ${iconClass}"></i>
+                    <span class="file-name">${file.name}</span>
+                    <span class="file-meta">${meta}</span>
+                `;
+                
+                fileList.appendChild(fileItem);
+            });
+        }
+
+        // Network tools functions
+        function setupNetworkTools() {
+            document.getElementById('ping-tool').addEventListener('click', function() {
+                addLogEntry('Used ping tool');
+                const host = prompt('Enter hostname or IP address to ping:', 'google.com');
+                if (host) {
+                    executeCommand(`ping ${host}`);
+                }
+            });
+            
+            document.getElementById('traceroute-tool').addEventListener('click', function() {
+                addLogEntry('Used traceroute tool');
+                const host = prompt('Enter hostname or IP address for traceroute:', 'google.com');
+                if (host) {
+                    executeCommand(`traceroute ${host}`);
+                }
+            });
+            
+            document.getElementById('scan-tool').addEventListener('click', function() {
+                addLogEntry('Initiated security scan');
+                addTerminalLine('command', 'security-scan');
+                addTerminalLine('output', 'Initializing security scan...');
+                
+                setTimeout(() => {
+                    addTerminalLine('output', 'Scanning system files...');
+                }, 500);
+                
+                setTimeout(() => {
+                    addTerminalLine('output', 'Checking for vulnerabilities...');
+                }, 1500);
+                
+                setTimeout(() => {
+                    addTerminalLine('output', 'Analyzing network connections...');
+                }, 2500);
+                
+                setTimeout(() => {
+                    addTerminalLine('success', 'Security scan complete. No threats detected.');
+                }, 3500);
+            });
+            
+            document.getElementById('backup-tool').addEventListener('click', function() {
+                addLogEntry('Started data backup');
+                addTerminalLine('command', 'backup-data');
+                addTerminalLine('output', 'Starting data backup process...');
+                
+                let progress = 0;
+                const backupInterval = setInterval(() => {
+                    progress += 20;
+                    addTerminalLine('output', `Backup progress: ${progress}%`);
+                    
+                    if (progress >= 100) {
+                        clearInterval(backupInterval);
+                        addTerminalLine('success', 'Backup completed successfully.');
+                    }
+                }, 800);
+            });
+        }
+
+        // Tab switching
+// Replace setupTabSwitching with this corrected version
+function setupTabSwitching() {
+    document.querySelectorAll('.nav-menu a').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            if (this.id === 'logout-link') {
+                logout();
+                return;
+            }
+            
+            // Remove active class from all links
+            document.querySelectorAll('.nav-menu a').forEach(l => l.classList.remove('active'));
+            
+            // Add active class to clicked link
+            this.classList.add('active');
+            
+            // Hide all panels
+            document.querySelectorAll('.main-content .panel').forEach(panel => {
+                panel.style.display = 'none';
+            });
+            
+            // Show the selected panel
+            const tabName = this.getAttribute('data-tab');
+            const panel = document.getElementById(`${tabName}-panel`);
+            if (panel) {
+                panel.style.display = 'block';
+                
+                // Load content if needed
+                if (tabName === 'assignments') {
+                    loadAssignments();
+                }
+            }
+            
+            // Track tab change in activity log
+            addLogEntry(`Switched to ${tabName} tab`);
+        });
+    });
+}
+
+        // Track user activity
+        function trackUserActivity(action, details) {
+            const username = localStorage.getItem('username') || sessionStorage.getItem('username') || document.getElementById('username-display').textContent;
+            
+            fetch('/bin/log_user_activity.sh', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `username=${encodeURIComponent(username)}&activity=${encodeURIComponent(action)}&details=${encodeURIComponent(details || '')}`
+            }).catch(console.error);
+        }
+
+                // Initialize session and load user data
+function initializeSession() {
+    // Get username from session storage or local storage with proper fallback
+    const username = localStorage.getItem('username') || sessionStorage.getItem('username');
+    
+    if (!username) {
+        // If no username is found, redirect to login page
+        window.location.href = '/index.html';
+        return;
+    }
+    
+    console.log("Initializing session for user:", username);
+    
+    // Update UI with username
+    document.getElementById('username-display').textContent = username;
+    document.getElementById('user-display-name').textContent = username;
+    document.getElementById('terminal-whoami').textContent = username;
+    document.getElementById('prompt-username').textContent = `${username}@Loginator-3000:~$`;
+    
+    // Set first letter of username as avatar
+    document.getElementById('user-avatar').textContent = username.charAt(0).toUpperCase();
+    
+    // Update date/time
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+    
+    // Update system stats periodically
+    simulateSystemStats();
+    setInterval(simulateSystemStats, 5000);
+    
+    // Load containers
+    loadContainers();
+    
+    // Load files
+    loadFiles();
+    
+    // Initialize activity log
+    initActivityLog();
+    
+    // Load assignments
+    loadAssignments();
+    
+    // Setup tool event handlers
+    setupNetworkTools();
+    
+    // Setup tab switching
+    setupTabSwitching();
+    
+    // Setup other event handlers
+    document.getElementById('refresh-stats').addEventListener('click', simulateSystemStats);
+    document.getElementById('refresh-containers').addEventListener('click', loadContainers);
+    document.getElementById('refresh-assignments').addEventListener('click', loadAssignments);
+    document.getElementById('refresh-files').addEventListener('click', loadFiles);
+    document.getElementById('refresh-logs').addEventListener('click', initActivityLog);
+    document.getElementById('clear-logs').addEventListener('click', clearActivityLog);
+    document.getElementById('clear-terminal').addEventListener('click', function() {
+        terminalOutput.innerHTML = '';
+    });
+    document.getElementById('terminal-help').addEventListener('click', function() {
+        executeCommand('help');
+    });
+    
+    // Add a log entry for session start
+    addLogEntry('Session started', `User ${username} logged in`);
+}
+        
+        // Initialize activity log with some sample entries
+        function initActivityLog() {
+            const activityLog = document.getElementById('activity-log');
+            activityLog.innerHTML = ''; // Clear existing entries
+            
+            // Sample log entries
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString().split(' ')[0];
+            const hourAgo = new Date(now.getTime() - 60 * 60 * 1000).toLocaleTimeString().split(' ')[0];
+            const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000).toLocaleTimeString().split(' ')[0];
+            
+            const sampleEntries = [
+                { time: twoHoursAgo, action: 'Session started', details: 'Initial login' },
+                { time: twoHoursAgo, action: 'Container started', details: 'ubuntu-server' },
+                { time: hourAgo, action: 'File modified', details: 'config.json' },
+                { time: hourAgo, action: 'Security scan', details: 'No threats detected' },
+                { time: timeStr, action: 'Session resumed', details: 'User logged in' }
+            ];
+            
+            sampleEntries.forEach(entry => {
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                logEntry.innerHTML = `
+                    <span class="log-time">[${entry.time}]</span>
+                    <span class="log-action">${entry.action}</span>
+                    ${entry.details ? `<span class="log-details">${entry.details}</span>` : ''}
+                `;
+                activityLog.appendChild(logEntry);
+            });
+        }
+        
+        // Clear activity log
+        function clearActivityLog() {
+            const activityLog = document.getElementById('activity-log');
+            activityLog.innerHTML = '';
+            addLogEntry('Activity log cleared', 'User cleared the activity log');
+        }
+        
+        // Logout function
+        function logout() {
+            addLogEntry('Logging out', 'User session terminated');
+            
+            // Show logout animation in terminal
+            addTerminalLine('output', 'Terminating session...');
+            
+            setTimeout(() => {
+                addTerminalLine('output', 'Saving user data...');
+            }, 500);
+            
+            setTimeout(() => {
+                addTerminalLine('output', 'Closing connections...');
+            }, 1000);
+            
+            setTimeout(() => {
+                addTerminalLine('success', 'Logout successful. Redirecting to login page...');
+                
+                // Clear session storage
+                localStorage.removeItem('username');
+                sessionStorage.removeItem('username');
+                
+                // Redirect to login page
+                setTimeout(() => {
+                    window.location.href = '/index.html';
+                }, 1000);
+            }, 1500);
+        }
+
+        // Handle container data if no server is available
+        function fallbackContainerData() {
+            const containerList = document.getElementById('container-list');
+            containerList.innerHTML = '';
+            
+            const sampleContainers = [
+                { name: 'ubuntu-server', description: 'Ubuntu 22.04 LTS server with SSH access' },
+                { name: 'alpine-minimal', description: 'Lightweight Alpine Linux container' },
+                { name: 'debian-web', description: 'Debian container with NGINX and PHP' }
+            ];
+            
+            sampleContainers.forEach(container => {
+                // Create container element
+                const containerItem = document.createElement('li');
+                containerItem.classList.add('container-item');
+                
+                // Add random stats for demo
+                const cpuUsage = Math.floor(Math.random() * 60) + 5;
+                const memoryUsage = Math.floor(Math.random() * 500) + 100;
+                const diskUsage = Math.floor(Math.random() * 2) + 1;
+                
+                containerItem.innerHTML = `
+                    <div class="container-header">
+                        <h3 class="container-name">${container.name}</h3>
+                    </div>
+                    <div class="container-description">${container.description}</div>
+                    <div class="container-stats">
+                        <div class="container-stat">
+                            <i class="fas fa-microchip"></i>
+                            <span>${cpuUsage}% CPU</span>
+                        </div>
+                        <div class="container-stat">
+                            <i class="fas fa-memory"></i>
+                            <span>${memoryUsage}MB RAM</span>
+                        </div>
+                        <div class="container-stat">
+                            <i class="fas fa-hdd"></i>
+                            <span>${diskUsage}GB Storage</span>
+                        </div>
+                    </div>
+                    <div class="container-actions">
+                        <button class="btn btn-primary access-container" data-container="${container.name}">
+                            <i class="fas fa-terminal"></i> Access
+                        </button>
+                        <button class="btn btn-info container-stats-btn" data-container="${container.name}">
+                            <i class="fas fa-chart-bar"></i> Stats
+                        </button>
+                        <button class="btn btn-warning container-restart-btn" data-container="${container.name}">
+                            <i class="fas fa-sync-alt"></i> Restart
+                        </button>
+                        <button class="btn btn-danger container-stop-btn" data-container="${container.name}">
+                            <i class="fas fa-stop-circle"></i> Stop
+                        </button>
+                    </div>
+                `;
+                containerList.appendChild(containerItem);
+                
+                // Add event listeners to buttons
+                containerItem.querySelector('.access-container').addEventListener('click', function() {
+                    const container = this.getAttribute('data-container');
+                    accessContainer(container);
+                });
+                
+                containerItem.querySelector('.container-stats-btn').addEventListener('click', function() {
+                    const container = this.getAttribute('data-container');
+                    showContainerStats(container);
+                });
+                
+                containerItem.querySelector('.container-restart-btn').addEventListener('click', function() {
+                    const container = this.getAttribute('data-container');
+                    restartContainer(container);
+                });
+                
+                containerItem.querySelector('.container-stop-btn').addEventListener('click', function() {
+                    const container = this.getAttribute('data-container');
+                    stopContainer(container);
+                });
+            });
+        }
+        
+        // Mock server error to fall back to sample data
+        function handleServerError() {
+            console.log('Using fallback demo data due to server unavailability');
+            fallbackContainerData();
+            addLogEntry('System notice', 'Demo mode activated - server unavailable');
+        }
+        
+        // Initialize dashboard when content is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                initializeSession();
+            } catch (error) {
+                console.error('Error initializing dashboard:', error);
+                handleServerError();
+            }
+            
+            // Attempt to load containers, if fails then use fallback data
+            loadContainers().catch(handleServerError);
+        });
+
+
+        // Konami Code Easter Egg
+let konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+let konamiIndex = 0;
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === konamiCode[konamiIndex]) {
+    konamiIndex++;
+    
+    if (konamiIndex === konamiCode.length) {
+      // Easter egg activated!
+      document.body.classList.add('easter-egg');
+      
+      // Create confetti
+      for (let i = 0; i < 100; i++) {
+        createConfetti();
+      }
+      
+      // Show achievement
+      const notification = document.createElement('div');
+      notification.className = 'achievement-unlocked';
+      notification.innerHTML = `
+        <div class="achievement-icon">🏆</div>
+        <div class="achievement-text">
+          <h3>Achievement Unlocked!</h3>
+          <p>Konami Code Master</p>
+        </div>
+      `;
+      document.body.appendChild(notification);
+      
+      // Remove after animation
+      setTimeout(() => {
+        notification.classList.add('slide-out');
+        setTimeout(() => notification.remove(), 1000);
+      }, 5000);
+      
+      konamiIndex = 0;
+    }
+  } else {
+    konamiIndex = 0;
+  }
+});
+
+function createConfetti() {
+  const confetti = document.createElement('div');
+  confetti.className = 'confetti';
+  confetti.style.left = Math.random() * 100 + 'vw';
+  confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+  confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+  document.body.appendChild(confetti);
+  
+  // Remove confetti after animation
+  setTimeout(() => confetti.remove(), 5000);
+}
+
+function loadAssignments() {
+    const username = localStorage.getItem('username') || sessionStorage.getItem('username') || 'guest';
+    const assignmentsList = document.getElementById('assignmentsList');
+    assignmentsList.innerHTML = '<p>Loading assignments...</p>';
+    
+    // Update to pass username as a parameter to get only relevant assignments
+    fetch(`/bin/get_user_submissions.sh?username=${encodeURIComponent(username)}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data || data.length === 0) {
+                assignmentsList.innerHTML = '<p>No assignments found for your account.</p>';
+                return;
+            }
+            
+            let html = '<div class="assignments-list">';
+            data.forEach(a => {
+                const statusClass = a.completed == 1 ? 'status-completed' : 'status-pending';
+                const statusText = a.completed == 1 ? 'Completed' : 'Pending';
+                
+                html += `
+                <div class="assignment-card">
+                    <div class="assignment-header">
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                        <span class="assignment-date">${a.assigned_at}</span>
+                    </div>
+                    <div class="assignment-body">
+                        <h3 class="assignment-title">Work Assignment #${a.id}</h3>
+                        <div class="assignment-description">${a.work_description}</div>
+                    </div>
+                    <div class="assignment-footer">
+                        ${a.completed != 1 ? 
+                            `<button class="btn btn-primary submit-work-btn" 
+                                onclick="showSubmissionForm('${a.id}', '${a.work_description.replace(/'/g, "\\'")}')">
+                                <i class="fas fa-upload"></i> Submit Work
+                            </button>` : ''}
+                    </div>
+                </div>`;
+            });
+            html += '</div>';
+            
+            assignmentsList.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error loading assignments:', error);
+            
+            // Use fallback data if the server request fails
+            const fallbackData = [
+                {
+                    id: 1,
+                    work_description: "Create a login page with username and password validation",
+                    assigned_at: "2023-05-15 10:30:00",
+                    completed: 0
+                },
+                {
+                    id: 2,
+                    work_description: "Fix the CSS styling on the header navigation",
+                    assigned_at: "2023-05-14 14:45:00",
+                    completed: 1
+                }
+            ];
+            
+            let html = '<div class="assignments-list">';
+            fallbackData.forEach(a => {
+                const statusClass = a.completed == 1 ? 'status-completed' : 'status-pending';
+                const statusText = a.completed == 1 ? 'Completed' : 'Pending';
+                
+                html += `
+                <div class="assignment-card">
+                    <div class="assignment-header">
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                        <span class="assignment-date">${a.assigned_at}</span>
+                    </div>
+                    <div class="assignment-body">
+                        <h3 class="assignment-title">Work Assignment #${a.id}</h3>
+                        <div class="assignment-description">${a.work_description}</div>
+                    </div>
+                    <div class="assignment-footer">
+                        ${a.completed != 1 ? 
+                            `<button class="btn btn-primary submit-work-btn" 
+                                onclick="showSubmissionForm('${a.id}', '${a.work_description.replace(/'/g, "\\'")}')">
+                                <i class="fas fa-upload"></i> Submit Work
+                            </button>` : ''}
+                    </div>
+                </div>`;
+            });
+            html += '</div>';
+            
+            assignmentsList.innerHTML = html;
+        });
+}
+
+function updateAssignmentStatus(assignmentId, status) {
+    const username = localStorage.getItem('username') || sessionStorage.getItem('username');
+    
+    fetch('/bin/update_work_status.sh', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `id=${encodeURIComponent(assignmentId)}&status=${encodeURIComponent(status)}&username=${encodeURIComponent(username)}`
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Server responded with an error');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Refresh assignments list
+            loadAssignments();
+            addLogEntry('Assignment updated', `Status changed to ${status}`);
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while updating assignment');
+    });
+}
+
+document.getElementById('assignment-submit-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const feedback = document.getElementById('assignment-feedback');
+    
+    // Add username to submission
+    const username = localStorage.getItem('username') || sessionStorage.getItem('username') || 'guest';
+    formData.append('username', username);
+    
+    feedback.textContent = 'Submitting...';
+    
+    // Updated to handle file uploads properly
+    fetch('/bin/submit_assignment.sh', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Server responded with an error');
+        }
+        return response.json();
+    })
+    .then(data => {
+        feedback.textContent = data.message;
+        feedback.style.color = data.success ? 'var(--success)' : 'var(--danger)';
+        
+        if (data.success) {
+            addLogEntry('Assignment submitted', `Work submitted for assignment #${document.getElementById('modal-assignment-id').value}`);
+            
+            // Update the assignment status to completed
+            updateAssignmentStatus(document.getElementById('modal-assignment-id').value, 'completed');
+            
+            // Close modal after short delay
+            setTimeout(closeAssignmentModal, 1500);
+        }
+    })
+    .catch(error => {
+        console.error('Error submitting assignment:', error);
+        feedback.textContent = 'Submission failed. Please try again later.';
+        feedback.style.color = 'var(--danger)';
+    });
+});
+
+function showSubmissionForm(id, description) {
+    // Clear previous form data
+    document.getElementById('work-code').value = '';
+    document.querySelector('input[name="work_file"]').value = '';
+    document.getElementById('assignment-feedback').textContent = '';
+    
+    // Set current assignment data
+    document.getElementById('modal-assignment-id').value = id;
+    document.getElementById('modal-assignment-desc').textContent = description;
+    document.getElementById('assignment-modal').style.display = 'block';
+    
+    // Add overlay to darken background
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-overlay';
+    overlay.style = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:999;';
+    document.body.appendChild(overlay);
+}
+
+function closeAssignmentModal() {
+    document.getElementById('assignment-modal').style.display = 'none';
+    const overlay = document.getElementById('modal-overlay');
+    if (overlay) overlay.remove();
+    
+    // Refresh assignments
+    loadAssignments();
+}
+
+
+    </script>
+</body>
+</html>

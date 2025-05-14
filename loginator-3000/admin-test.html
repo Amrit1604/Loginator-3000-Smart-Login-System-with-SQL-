@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Login Test</title>
+</head>
+<body>
+    <h1>Admin Login Test</h1>
+    <p>This form uses hardcoded credentials for testing.</p>
+    
+    <form id="test-form">
+        <button type="submit">Login with hardcoded admin/admin@123</button>
+    </form>
+    
+    <div id="result" style="margin-top: 20px; padding: 10px; background-color: #f0f0f0;"></div>
+    
+    <script>
+        document.getElementById('test-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            document.getElementById('result').textContent = "Sending request...";
+            
+            fetch('/bin/admin_login.sh', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'username=admin&password=admin@123'
+            })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('result').innerHTML = `
+                    <h3>Response:</h3>
+                    <pre>${data}</pre>
+                    
+                    <p>If you see "success":true above, <a href="admin.html">click here</a> to go to admin page.</p>
+                `;
+            })
+            .catch(error => {
+                document.getElementById('result').textContent = `Error: ${error}`;
+            });
+        });
+    </script>
+</body>
+</html>

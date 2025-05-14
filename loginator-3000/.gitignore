@@ -1,0 +1,53 @@
+# OS/system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor/IDE settings
+.vscode/
+*.swp
+*.swo
+
+# Logs and debug output
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.out
+*.err
+
+# Data files (user data, logs, sessions)
+data/users.txt
+data/pending.txt
+data/user_sessions.txt
+data/active_users.txt
+data/logs.txt
+data/logs/
+data/sessions/
+data/*.log
+
+# Bash script artifacts
+bin/*.log
+bin/*.tmp
+bin/*.bak
+
+# Container directories (if generated)
+containers/*
+
+# Node/npm artifacts (if any JS build tools are used)
+node_modules/
+dist/
+build/
+
+# Shell history
+*.history
+
+# Personal/backup files
+*~
+*.old
+*.orig
+*.save
+
+data/*
+!data/.gitkeep
